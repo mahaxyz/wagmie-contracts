@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 import {IAirdropRewarder} from "../interfaces/IAirdropRewarder.sol";
-import {IVesting} from "../interfaces/IVesting.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
@@ -23,10 +22,7 @@ contract AirdropRewarder is IAirdropRewarder, Initializable, OwnableUpgradeable,
   mapping(address => bytes32) public tokenMerkleRoots;
   mapping(address => mapping(address => bool)) public rewardsClaimed;
   address public launchpad;
-
-  constructor() {
-    _disableInitializers();
-  }
+  mapping(address => uint256) public airdropAmount;
 
   /// @inheritdoc IAirdropRewarder
   function initialize(address _launchpad) external initializer {
@@ -47,6 +43,12 @@ contract AirdropRewarder is IAirdropRewarder, Initializable, OwnableUpgradeable,
   function setLaunchpad(address _launchpad) external onlyOwner {
     if (_launchpad == address(0)) revert InvalidAddress();
     launchpad = _launchpad;
+  }
+
+  /// @inheritdoc IAirdropRewarder
+  function setAirdropAmount(address _token, uint256 _amount) external onlyLaunchpad {
+    if (_token == address(0)) revert InvalidAddress();
+    airdropAmount[_token] = _amount;
   }
 
   /// @inheritdoc IAirdropRewarder
@@ -73,6 +75,8 @@ contract AirdropRewarder is IAirdropRewarder, Initializable, OwnableUpgradeable,
     if (!MerkleProof.verify(_merkleProofs, tokenMerkleRoots[_token], node)) revert InvalidMerkleProof(_merkleProofs);
     rewardsClaimed[_token][_user] = true;
 
+     // Multiply by ration and scale down to 18 decimals
+    IERC20(_token).safeTransfer(_user, _claimAmount * airdropAmount[_token] / 1e18);
     emit RewardsClaimed(_token, _user, _claimAmount);
   }
 

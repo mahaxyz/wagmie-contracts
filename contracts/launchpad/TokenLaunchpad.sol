@@ -146,7 +146,13 @@ abstract contract TokenLaunchpad is ITokenLaunchpad, OwnableUpgradeable, ERC721E
   }
 
   /// @inheritdoc ITokenLaunchpad
-  function createAndBuy(CreateParams memory p, address expected, uint256 amount)
+  function createAndBuy(
+    CreateParams memory p,
+    address expected,
+    uint256 amount,
+    bytes32 merkleRoot,
+    bool burnPosition
+  )
     external
     payable
     returns (address, uint256, uint256)
@@ -194,8 +200,10 @@ abstract contract TokenLaunchpad is ITokenLaunchpad, OwnableUpgradeable, ERC721E
       uint256 pendingBalance = token.balanceOf(address(this));
 
       if (p.creatorAllocation > 0) {
-        airdropRewarder.setMerkleRoot(address(token), p.merkleRoot);
-        token.transfer(address(airdropRewarder), pendingBalance * p.creatorAllocation / 10_000);
+        uint256 airdropAmount = pendingBalance * p.creatorAllocation / 10_000;
+        airdropRewarder.setAirdropAmount(address(token), airdropAmount);
+        airdropRewarder.setMerkleRoot(address(token), merkleRoot);
+        token.transfer(address(airdropRewarder), airdropAmount);
       }
 
       pendingBalance = token.balanceOf(address(this));
@@ -212,7 +220,7 @@ abstract contract TokenLaunchpad is ITokenLaunchpad, OwnableUpgradeable, ERC721E
           tickSpacing: p.valueParams.tickSpacing,
           totalAmount: pendingBalance,
           graduationAmount: p.valueParams.graduationLiquidity,
-          burnPosition: p.burnPosition
+          burnPosition: burnPosition
         })
       );
       emit TokenLaunched(token, address(p.adapter), pool, p);

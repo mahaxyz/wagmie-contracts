@@ -90,6 +90,67 @@ export async function deployProxy(
   return proxy;
 }
 
+export async function upgradeProxy(
+  hre: HardhatRuntimeEnvironment,
+  args: any[],
+  proxyAddress: string,
+  newImplementationName: string,
+  verifyOnEtherscan = true
+) {
+  const { deploy, getArtifact } = hre.deployments;
+  const { deployer } = await hre.getNamedAccounts();
+
+  try {
+    // Deploy the new implementation
+    const newImpl = await deploy(`${newImplementationName}-Impl`, {
+      from: deployer,
+      contract: newImplementationName,
+      skipIfAlreadyDeployed: false,
+      log: true,
+    });
+
+    // Get the proxy contract with the correct interface
+    const proxy = await hre.ethers.getContractAt("IMAHAProxy", proxyAddress);
+    
+    // Get the contract interface for encoding initialization data
+    const contract = await hre.ethers.getContractAt(
+      newImplementationName,
+      proxyAddress
+    );
+
+    // Encode initialization data if args are provided
+    const argsInit = args.length > 0 
+      ? contract.interface.encodeFunctionData("initialize", args)
+      : "0x";
+
+    // Upgrade the proxy to the new implementation
+    console.log(`Upgrading proxy to new implementation at ${newImpl.address}...`);
+    const tx = await proxy.upgradeToAndCall(newImpl.address, argsInit);
+    const receipt = await tx.wait();
+    if (!receipt) {
+      throw new Error("Transaction failed - no receipt received");
+    }
+    console.log(`Proxy upgraded successfully in tx ${receipt.hash}`);
+
+    // Optionally verify on Etherscan
+    if (verifyOnEtherscan && hre.network.name !== "hardhat") {
+      console.log("Verifying new implementation on Etherscan...");
+      await hre.run("verify:verify", {
+        address: newImpl.address,
+        constructorArguments: [],
+      });
+    }
+
+    return {
+      proxyAddress,
+      newImplementation: newImpl.address,
+    };
+  } catch (error) {
+    console.error("Error upgrading proxy:", error);
+    throw error;
+  }
+}
+
 export async function deployContract(
   hre: HardhatRuntimeEnvironment,
   implementation: string,

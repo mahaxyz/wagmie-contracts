@@ -144,7 +144,7 @@ export const deployTokenSimple = async (
 
   // create a launchpad token
   await waitForTx(
-    await launchpad.createAndBuy(data, computedAddress, amountToBuy, {
+    await launchpad.createAndBuy(data, computedAddress, amountToBuy, "", false, {
       value: creationFee + dust,
     })
   );
@@ -250,13 +250,15 @@ export const deployTokenPremium = async (
       data,
       computedAddress,
       amountToBuy,
+      "",
+      false,
       {
         value: creationFee + dust,
       }
     )
   );
   await waitForTx(
-    await launchpad.createAndBuy(data, computedAddress, amountToBuy, {
+    await launchpad.createAndBuy(data, computedAddress, amountToBuy, "", false, {
       value: creationFee + dust,
     })
   );

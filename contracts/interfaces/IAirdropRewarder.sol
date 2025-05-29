@@ -34,6 +34,13 @@ interface IAirdropRewarder {
   function setLaunchpad(address _launchpad) external;
 
   /**
+   * @notice Set the airdrop amount
+   * @param _token Address of the token
+   * @param _amount Amount of tokens to airdrop
+   */
+  function setAirdropAmount(address _token, uint256 _amount) external;
+
+  /**
    * @notice Set the Merkle root for a token
    * @param _token Address of the token
    * @param _merkleRoot Merkle root for the token's airdrop
